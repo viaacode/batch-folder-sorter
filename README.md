@@ -90,6 +90,23 @@ ROOT/
       OBJ001_002+FO+FDP.tif
 ```
 
+Additional example with a dashed IE identifier:
+
+```text
+CSV Mapnaam: 2814-001
+Files:
+2814-001_001_M.tif
+2814-001_001_B.tif
+
+Output:
+ROOT/
+  2814-001/
+    Masters_16bit/
+      2814-001_001_M.tif
+    Bewerkt_8bit/
+      2814-001_001_B.tif
+```
+
 Notes:
 
 - `Artwork batch mode` keeps the original filenames
