@@ -14,6 +14,7 @@ EXTRA_DIR_NAME = "_EXTRA_FILES"
 
 
 ARTWORK_PATTERN = re.compile(r"^(?P<ie>[^_+\-]+)[_-](?P<sequence>\d+)")
+ARTWORK_SUFFIX_PATTERN = re.compile(r"^[_-](?P<sequence>\d+)(?:$|[+_-].*)")
 
 
 def _is_cancelled(stop_event):
@@ -217,7 +218,28 @@ def process_standard_mode(
     return matched, extra_files
 
 
-def parse_artwork_filename(file_path):
+def _match_artwork_ie(base_stem, valid_ie_map):
+    if valid_ie_map:
+        base_stem_lower = base_stem.lower()
+
+        # Prefer the longest CSV match so values like "2814-001" win over "2814".
+        for ie_key in sorted(valid_ie_map, key=len, reverse=True):
+            if not base_stem_lower.startswith(ie_key):
+                continue
+
+            remainder = base_stem[len(ie_key):]
+            match = ARTWORK_SUFFIX_PATTERN.match(remainder)
+            if match:
+                return ie_key, match.group("sequence")
+
+    match = ARTWORK_PATTERN.match(base_stem)
+    if not match:
+        return None, None
+
+    return match.group("ie").lower(), match.group("sequence")
+
+
+def parse_artwork_filename(file_path, valid_ie_map=None):
     stem = file_path.stem
     variant_suffix = ""
     is_master = False
@@ -232,14 +254,13 @@ def parse_artwork_filename(file_path):
     else:
         base_stem = stem
 
-    match = ARTWORK_PATTERN.match(base_stem)
-
-    if not match:
+    ie_key, sequence = _match_artwork_ie(base_stem, valid_ie_map)
+    if not ie_key:
         return None
 
     return {
-        "ie_key": match.group("ie").lower(),
-        "sequence": match.group("sequence"),
+        "ie_key": ie_key,
+        "sequence": sequence,
         "is_master": is_master,
         "variant_suffix": variant_suffix,
     }
@@ -258,7 +279,7 @@ def preview_artwork_mode(root_path, valid_ie_map):
             continue
 
         stats["supported_files"] += 1
-        parsed = parse_artwork_filename(item)
+        parsed = parse_artwork_filename(item, valid_ie_map=valid_ie_map)
         if parsed and parsed["ie_key"] in valid_ie_map:
             stats["matching_files"] += 1
 
@@ -308,7 +329,7 @@ def process_artwork_batch_mode(
             extra_files.append(item)
             continue
 
-        parsed = parse_artwork_filename(item)
+        parsed = parse_artwork_filename(item, valid_ie_map=valid_ie_map)
         if not parsed or parsed["ie_key"] not in valid_ie_map:
             extra_files.append(item)
             continue
