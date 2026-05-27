@@ -95,6 +95,7 @@ Notes:
 - `Artwork batch mode` keeps the original filenames
 - `_M` is treated as master
 - `_B` and files without a suffix go to `Bewerkt_8bit`
+- IE identifiers that contain dashes, such as `2814-001`, are supported when that exact value exists in the CSV
 
 ## Main Features
 
@@ -109,7 +110,7 @@ Notes:
 
 Download the latest release from:
 
-- [GitHub Releases](https://github.com/9elmaz9/batch-folder-sorter/releases)
+- [GitHub Releases](https://github.com/viaacode/batch-folder-sorter/releases)
 
 Choose the file that matches your system:
 
@@ -170,6 +171,18 @@ OBJ003
 ```
 
 If the selected CSV does not match the selected `ROOT` folder, the app will stop and show an error instead of moving everything into `_EXTRA_FILES`.
+
+## Hidden macOS Files
+
+Batch Folder Sorter does not create hidden `._*` files.
+
+These files are usually created by macOS as metadata sidecar files, especially when data is copied to or used from external drives that move between macOS and Windows or other non-Apple filesystems.
+
+If these files appear in a batch or in an ingest workflow, they should be handled separately before ingest.
+
+For a practical explanation and cleanup example, see this Apple Community discussion:
+
+- [How do I delete ._ on mac USB file names](https://discussions.apple.com/thread/252896362?sortBy=rank)
 
 ## Screenshots
 
