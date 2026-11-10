@@ -30,7 +30,7 @@ def resource_path(filename):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
-LOGO_PATH = resource_path("assets/LOGOLOGO.png")
+LOGO_PATH = resource_path("logo.png")
 
 
 def shorten_path(path, fallback):
@@ -288,7 +288,8 @@ class MainWindow(QMainWindow):
                 border-radius: 18px;
             }
             QFrame#Header {
-                background: #2bd0b7;
+                background: #fffdf8;
+                border: 1px solid #d8d0c2;
             }
             QLabel {
                 color: #213029;
@@ -405,11 +406,11 @@ class MainWindow(QMainWindow):
         )
         self.header.setObjectName("Header")
         self.title_label.setStyleSheet(
-            "color: #f5f7f0; font-size: 28px; font-weight: 700; border: none;"
+            "color: #213029; font-size: 28px; font-weight: 700; border: none;"
         )
         self.title_label.setAlignment(Qt.AlignLeft)
         self.subtitle_label.setStyleSheet(
-            "color: #d9f2ec; font-size: 13px; border: none;"
+            "color: #6b756e; font-size: 13px; border: none;"
         )
         self.subtitle_label.setAlignment(Qt.AlignLeft)
         self.run_button.setObjectName("Accent")
