@@ -34,8 +34,27 @@ def parse_csv(csv_path, stop_event=None, logger=None):
     with open(csv_path, newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         _log(logger, f"CSV headers: {reader.fieldnames}")
-        if not reader.fieldnames or "Mapnaam" not in reader.fieldnames:
-            raise ValueError("The selected CSV is missing the 'Mapnaam' column.")
+        if not reader.fieldnames:
+            raise ValueError("The selected CSV does not contain any headers.")
+
+        name_column = next(
+            (
+                column
+                for column in (
+                    "Mapnaam",
+                    "Bestandsnaam zonder extensie",
+                )
+                if column in reader.fieldnames
+            ),
+            None,
+        )
+        if name_column is None:
+            raise ValueError(
+                "The selected CSV must contain 'Mapnaam' or "
+                "'Bestandsnaam zonder extensie'."
+            )
+
+        _log(logger, f"Using CSV name column: {name_column}")
 
         for row in reader:
             if _is_cancelled(stop_event):
@@ -45,11 +64,11 @@ def parse_csv(csv_path, stop_event=None, logger=None):
             if not row:
                 continue
 
-            name = (row.get("Mapnaam") or "").strip()
+            name = (row.get(name_column) or "").strip()
             if not name:
                 continue
 
-            if name.lower().startswith("unieke naam"):
+            if name.lower().startswith("unieke"):
                 continue
 
             valid_ie_map[name.lower()] = name
