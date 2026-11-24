@@ -36,8 +36,7 @@ The app takes:
 - a `ROOT` folder with files
 - a CSV file with a `Mapnaam` column
 
-Basic metadata exports using `Bestandsnaam zonder extensie` are also accepted.
-If your metadata is an Excel `.xlsx` file, export the relevant sheet as UTF-8 CSV before selecting it in the app.
+The app accepts supported meemoo metadata CSV exports. If your metadata is an Excel `.xlsx` file, export the relevant sheet as UTF-8 CSV before selecting it in the app.
 
 It then matches files to the identifiers in the CSV and moves them into the correct folders automatically.
 
@@ -179,7 +178,7 @@ If Windows SmartScreen appears, continue only if you trust the release source.
 
 ## CSV Requirements
 
-The CSV must contain a `Mapnaam` column.
+The CSV must contain a supported identifier column. `Mapnaam` is the standard column used in the examples below.
 
 Example:
 
