@@ -36,6 +36,9 @@ The app takes:
 - a `ROOT` folder with files
 - a CSV file with a `Mapnaam` column
 
+Basic metadata exports using `Bestandsnaam zonder extensie` are also accepted.
+If your metadata is an Excel `.xlsx` file, export the relevant sheet as UTF-8 CSV before selecting it in the app.
+
 It then matches files to the identifiers in the CSV and moves them into the correct folders automatically.
 
 Files that do not match are moved into `_EXTRA_FILES` instead of being mixed into the main structure.

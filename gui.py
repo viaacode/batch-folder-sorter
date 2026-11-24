@@ -1,8 +1,21 @@
 import os
+import random
 import threading
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import (
+    QObject,
+    QPointF,
+    Property,
+    QParallelAnimationGroup,
+    QPropertyAnimation,
+    QEasingCurve,
+    QTimer,
+    Qt,
+    QThread,
+    Signal,
+)
+from PySide6.QtGui import QColor, QIcon, QPainter
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -30,7 +43,7 @@ def resource_path(filename):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
-LOGO_PATH = resource_path("logo.png")
+LOGO_PATH = resource_path("assets/meemoo-logo_lockup-pos-rgb.svg")
 
 
 def shorten_path(path, fallback):
@@ -91,12 +104,152 @@ class UndoWorker(QObject):
             self.error.emit(str(exc))
 
 
-class ModeButton(QPushButton):
+class RippleButton(QPushButton):
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self._ripple_radius = 0.0
+        self._ripple_opacity = 0.0
+        self._ripple_center = QPointF()
+        self._ripple_group = None
+        self.setCursor(Qt.PointingHandCursor)
+
+    def _get_ripple_radius(self):
+        return self._ripple_radius
+
+    def _set_ripple_radius(self, value):
+        self._ripple_radius = value
+        self.update()
+
+    def _get_ripple_opacity(self):
+        return self._ripple_opacity
+
+    def _set_ripple_opacity(self, value):
+        self._ripple_opacity = value
+        self.update()
+
+    ripple_radius = Property(float, _get_ripple_radius, _set_ripple_radius)
+    ripple_opacity = Property(float, _get_ripple_opacity, _set_ripple_opacity)
+
+    def mousePressEvent(self, event):
+        self._ripple_center = event.position()
+        self._ripple_group = QParallelAnimationGroup(self)
+
+        radius = QPropertyAnimation(self, b"ripple_radius", self._ripple_group)
+        radius.setStartValue(0.0)
+        radius.setEndValue(max(self.width(), self.height()) * 0.8)
+        radius.setDuration(360)
+        radius.setEasingCurve(QEasingCurve.OutCubic)
+
+        opacity = QPropertyAnimation(self, b"ripple_opacity", self._ripple_group)
+        opacity.setStartValue(0.2)
+        opacity.setEndValue(0.0)
+        opacity.setDuration(360)
+        opacity.setEasingCurve(QEasingCurve.OutCubic)
+
+        self._ripple_group.start()
+        super().mousePressEvent(event)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setClipRect(self.rect())
+
+        if self._ripple_opacity > 0:
+            if self.objectName() in {"Accent", "PickerActive", "ModeActive"}:
+                color = QColor(255, 255, 255, int(self._ripple_opacity * 90))
+            else:
+                color = QColor(43, 208, 183, int(self._ripple_opacity * 70))
+            painter.setBrush(color)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(
+                self._ripple_center, self._ripple_radius, self._ripple_radius
+            )
+
+        # macOS can omit QPushButton text when the object name is changed
+        # dynamically. Paint picker labels explicitly so selected paths remain visible.
+        if self.objectName() in {"Picker", "PickerActive"} and self.text():
+            text_color = (
+                QColor("#145c50")
+                if self.objectName() == "PickerActive"
+                else QColor("#213029")
+            )
+            if not self.isEnabled():
+                text_color = QColor("#968f83")
+            painter.setPen(text_color)
+            painter.setFont(self.font())
+            painter.drawText(
+                self.rect().adjusted(14, 0, -14, 0),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                self.text(),
+            )
+
+
+class ModeButton(RippleButton):
     def __init__(self, text, on_click):
         super().__init__(text)
         self.setCheckable(True)
         self.clicked.connect(on_click)
         self.setCursor(Qt.PointingHandCursor)
+
+
+class ConfettiOverlay(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.particles = []
+        self.frame = 0
+        self.timer = QTimer(self)
+        self.timer.setInterval(16)
+        self.timer.timeout.connect(self._advance)
+        self.hide()
+
+    def start(self):
+        self.setGeometry(self.parentWidget().rect())
+        colors = ["#00c8aa", "#e39a32", "#213029", "#d9f4ee", "#b64a2e"]
+        self.particles = [
+            {
+                "x": self.width() * random.uniform(0.15, 0.85),
+                "y": random.uniform(-30, 20),
+                "vx": random.uniform(-2.4, 2.4),
+                "vy": random.uniform(1.2, 4.2),
+                "size": random.randint(5, 10),
+                "color": QColor(random.choice(colors)),
+                "angle": random.uniform(0, 360),
+                "spin": random.uniform(-8, 8),
+            }
+            for _ in range(90)
+        ]
+        self.frame = 0
+        self.show()
+        self.raise_()
+        self.timer.start()
+
+    def _advance(self):
+        self.frame += 1
+        for particle in self.particles:
+            particle["x"] += particle["vx"]
+            particle["y"] += particle["vy"]
+            particle["vy"] += 0.08
+            particle["angle"] += particle["spin"]
+        if self.frame > 115:
+            self.timer.stop()
+            self.hide()
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        for particle in self.particles:
+            painter.save()
+            painter.translate(particle["x"], particle["y"])
+            painter.rotate(particle["angle"])
+            painter.setBrush(particle["color"])
+            painter.setPen(Qt.NoPen)
+            size = particle["size"]
+            painter.drawRoundedRect(-size / 2, -size / 2, size, size * 0.65, 2, 2)
+            painter.restore()
 
 
 class MainWindow(QMainWindow):
@@ -110,6 +263,8 @@ class MainWindow(QMainWindow):
         self.mode_label = "Standard mode"
         self.log_visible = False
         self.last_run_result = None
+        self.spinner_frames = ["◐", "◓", "◑", "◒"]
+        self.spinner_index = 0
 
         self.setWindowTitle("Batch Folder Sorter")
         self.resize(760, 620)
@@ -127,6 +282,7 @@ class MainWindow(QMainWindow):
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
+        self.confetti = ConfettiOverlay(central)
 
         outer = QVBoxLayout(central)
         outer.setContentsMargins(18, 18, 18, 18)
@@ -137,19 +293,9 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(22, 18, 22, 18)
         header_layout.setSpacing(16)
 
-        self.logo_label = QLabel()
+        self.logo_label = QSvgWidget(LOGO_PATH)
         self.logo_label.setObjectName("LogoLabel")
-        if os.path.exists(LOGO_PATH):
-            logo_pixmap = QPixmap(LOGO_PATH)
-            if not logo_pixmap.isNull():
-                self.logo_label.setPixmap(
-                    logo_pixmap.scaled(
-                        170,
-                        52,
-                        Qt.KeepAspectRatio,
-                        Qt.SmoothTransformation,
-                    )
-                )
+        self.logo_label.setFixedSize(132, 80)
         header_layout.addWidget(self.logo_label, 0, Qt.AlignLeft | Qt.AlignVCenter)
 
         title_stack = QVBoxLayout()
@@ -192,22 +338,22 @@ class MainWindow(QMainWindow):
             "Standard mode", lambda: self.select_mode("Standard mode")
         )
         self.artwork_mode_button = ModeButton(
-            "Artwork batch mode", lambda: self.select_mode("Artwork batch mode")
+            "Artwork batch mode",
+            lambda: self.select_mode("Artwork batch mode"),
         )
         mode_row.addWidget(self.standard_mode_button)
         mode_row.addWidget(self.artwork_mode_button)
         card_layout.addLayout(mode_row)
 
-        mode_help = QLabel("Artwork mode supports _M, _B and files without a suffix.")
-        mode_help.setText("Artwork mode supports _M, _B")
+        mode_help = QLabel("Artwork mode supports _M, _B")
         mode_help.setObjectName("Muted")
         card_layout.addWidget(mode_help)
 
         actions = QHBoxLayout()
         actions.setSpacing(8)
-        self.run_button = QPushButton("Run Batch")
-        self.undo_button = QPushButton("Undo")
-        self.reset_button = QPushButton("Reset")
+        self.run_button = RippleButton("Run Batch")
+        self.undo_button = RippleButton("Undo")
+        self.reset_button = RippleButton("Reset")
         self.run_button.clicked.connect(self.start_run)
         self.undo_button.clicked.connect(self.undo_last_run)
         self.reset_button.clicked.connect(self.reset_ui)
@@ -226,8 +372,18 @@ class MainWindow(QMainWindow):
         self.status_label = QLabel("Ready.")
         self.status_label.setWordWrap(True)
         self.status_label.setObjectName("Muted")
+        self.spinner_label = QLabel(self.spinner_frames[0])
+        self.spinner_label.setObjectName("Spinner")
+        self.spinner_label.hide()
+        self.spinner_timer = QTimer(self)
+        self.spinner_timer.setInterval(120)
+        self.spinner_timer.timeout.connect(self._advance_spinner)
         status_layout.addWidget(status_title)
-        status_layout.addWidget(self.status_label)
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
+        status_row.addWidget(self.spinner_label, 0, Qt.AlignVCenter)
+        status_row.addWidget(self.status_label, 1)
+        status_layout.addLayout(status_row)
         outer.addWidget(self.status_card)
 
         self.log_card = QFrame()
@@ -263,12 +419,12 @@ class MainWindow(QMainWindow):
         layout.addLayout(top)
 
         if kind == "root":
-            button = QPushButton("Choose ROOT folder")
+            button = RippleButton("Choose ROOT folder")
             button.clicked.connect(self.browse_root)
             self.root_button = button
             self.root_badge = badge
         else:
-            button = QPushButton("Choose CSV file")
+            button = RippleButton("Choose CSV file")
             button.clicked.connect(self.browse_csv)
             self.csv_button = button
             self.csv_badge = badge
@@ -308,6 +464,12 @@ class MainWindow(QMainWindow):
                 color: #6b756e;
                 font-size: 12px;
             }
+            QLabel#Spinner {
+                color: #00c8aa;
+                font-size: 20px;
+                font-weight: 700;
+                min-width: 20px;
+            }
             QLabel#BadgeIdle, QLabel#BadgeActive {
                 border-radius: 12px;
                 padding: 4px 10px;
@@ -340,11 +502,11 @@ class MainWindow(QMainWindow):
                 color: #968f83;
             }
             QPushButton#Accent {
-                background: #2bd0b7;
+                background: #00c8aa;
                 color: white;
             }
             QPushButton#Accent:hover {
-                background: #22b6a0;
+                background: #00b49a;
             }
             QPushButton#Picker {
                 background: #eee7d8;
@@ -358,15 +520,16 @@ class MainWindow(QMainWindow):
                 background: #e1d7c4;
             }
             QPushButton#PickerActive {
-                background: #2bd0b7;
-                color: white;
+                background: #d9f4ee;
+                color: #145c50;
+                border: 1px solid #8edccd;
                 font-size: 12px;
                 font-weight: 600;
                 padding: 10px 14px;
                 text-align: left;
             }
             QPushButton#PickerActive:hover {
-                background: #22b6a0;
+                background: #c5eee5;
             }
             QPushButton#Undo {
                 background: #e39a32;
@@ -390,8 +553,12 @@ class MainWindow(QMainWindow):
                 color: #213029;
             }
             QPushButton#ModeActive {
-                background: #2bd0b7;
+                background: #00c8aa;
                 color: white;
+            }
+            QPushButton:pressed {
+                padding-top: 13px;
+                padding-bottom: 11px;
             }
             QTextEdit {
                 background: #1f2b25;
@@ -421,31 +588,43 @@ class MainWindow(QMainWindow):
     def update_selection_state(self):
         if self.root_path:
             self.root_button.setText(f"Selected: {shorten_path(self.root_path, 'ROOT')}")
+            self.root_button.setToolTip(self.root_path)
             self.root_button.setObjectName("PickerActive")
             self.root_badge.setText("Selected")
             self.root_badge.setObjectName("BadgeActive")
         else:
             self.root_button.setText("Choose ROOT folder")
+            self.root_button.setToolTip("")
             self.root_button.setObjectName("Picker")
             self.root_badge.setText("Not selected")
             self.root_badge.setObjectName("BadgeIdle")
 
         if self.csv_path:
             self.csv_button.setText(f"Selected: {shorten_path(self.csv_path, 'CSV')}")
+            self.csv_button.setToolTip(self.csv_path)
             self.csv_button.setObjectName("PickerActive")
             self.csv_badge.setText("Selected")
             self.csv_badge.setObjectName("BadgeActive")
         else:
             self.csv_button.setText("Choose CSV file")
+            self.csv_button.setToolTip("")
             self.csv_button.setObjectName("Picker")
             self.csv_badge.setText("Not selected")
             self.csv_badge.setObjectName("BadgeIdle")
 
         self._refresh_styles(self.root_button, self.csv_button, self.root_badge, self.csv_badge)
+        self.root_button.setStyleSheet(
+            "color: #145c50;" if self.root_path else "color: #213029;"
+        )
+        self.csv_button.setStyleSheet(
+            "color: #145c50;" if self.csv_path else "color: #213029;"
+        )
 
     def update_mode_state(self):
         self.standard_mode_button.setChecked(self.mode_label == "Standard mode")
-        self.artwork_mode_button.setChecked(self.mode_label == "Artwork batch mode")
+        self.artwork_mode_button.setChecked(
+            self.mode_label == "Artwork batch mode"
+        )
         self.standard_mode_button.setObjectName(
             "ModeActive" if self.mode_label == "Standard mode" else "Mode"
         )
@@ -469,6 +648,10 @@ class MainWindow(QMainWindow):
 
     def set_status(self, message):
         self.status_label.setText(message)
+
+    def _advance_spinner(self):
+        self.spinner_index = (self.spinner_index + 1) % len(self.spinner_frames)
+        self.spinner_label.setText(self.spinner_frames[self.spinner_index])
 
     def show_message(self, title, text, icon=QMessageBox.Information):
         box = QMessageBox(self)
@@ -528,6 +711,13 @@ class MainWindow(QMainWindow):
         self.standard_mode_button.setEnabled(not is_running)
         self.artwork_mode_button.setEnabled(not is_running)
         self.update_undo_button_state(is_running)
+        self.spinner_label.setVisible(is_running)
+        if is_running:
+            self.spinner_timer.start()
+        else:
+            self.spinner_timer.stop()
+            self.spinner_index = 0
+            self.spinner_label.setText(self.spinner_frames[0])
 
     def browse_root(self):
         path = QFileDialog.getExistingDirectory(
@@ -669,6 +859,7 @@ class MainWindow(QMainWindow):
             self.show_message("Stopped", "Process was cancelled.", QMessageBox.Information)
         else:
             self.set_status("Batch processing completed.")
+            self.confetti.start()
             self.show_message(
                 "Finished",
                 "Batch processing completed.",

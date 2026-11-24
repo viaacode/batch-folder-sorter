@@ -58,7 +58,7 @@ jobs:
         shell: pwsh
         run: >
           pyinstaller --clean --noconfirm --windowed --name BatchFolderSorter
-          --add-data "assets\LOGOLOGO.png;assets"
+          --add-data "assets\meemoo-logo_lockup-pos-rgb.svg;assets"
           --add-data "icon.png;."
           gui.py
 

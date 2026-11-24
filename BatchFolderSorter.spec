@@ -6,7 +6,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('assets/LOGOLOGO.png', 'assets'),
+        ('assets/meemoo-logo_lockup-pos-rgb.svg', 'assets'),
         ('icon.png', '.'),
     ],
     hiddenimports=[],
