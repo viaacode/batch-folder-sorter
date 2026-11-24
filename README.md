@@ -27,7 +27,7 @@ Please keep in mind:
 - always work on a copy of your source material when possible
 - always review the output before final ingest or delivery
 - unmatched files may be moved to `_EXTRA_FILES`, so they still need human review
-- `Undo` restores only the last successful batch action
+- `Undo` restores only the last successful batch performed during the current application session; it is not a general-purpose undo for arbitrary folders
 
 ## What The App Does
 
@@ -207,19 +207,15 @@ For a practical explanation and cleanup example, see this Apple Community discus
 
 ### Standard mode: base structure by extensions
 
-![Image 19-03-2026 at 17 15](https://github.com/user-attachments/assets/5d2b2ce3-c939-4e35-804a-1f7046777df2)
+![Standard mode with selected ROOT and CSV](docs/screenshots/standard-selected.png)
 
-![Image 19-03-2026 at 17 17](https://github.com/user-attachments/assets/24c75d1c-fa40-4bbf-bb78-32bbbd03d089)
-
-![Image 19-03-2026 at 17 18](https://github.com/user-attachments/assets/7e60d95b-16d1-43d8-884f-787d7f2cf0a8)
+![Standard mode result](docs/screenshots/standard-result.png)
  
 ### Artwork batch mode: structure by artwork filenames
 
-![Image 19-03-2026 at 17 19](https://github.com/user-attachments/assets/225b823e-449f-4784-923b-83fcf18ca2d4)
+![Artwork batch mode with selected ROOT and CSV](docs/screenshots/artwork-selected.png)
 
-![Image 19-03-2026 at 17 20](https://github.com/user-attachments/assets/7f6f95cd-2b18-4364-836c-ce0aff2ae7e6)
-
-![Image 19-03-2026 at 17 20 (1)](https://github.com/user-attachments/assets/4cb2f6f2-379a-4b52-a22e-ea1200001cd6)
+![Artwork batch mode result](docs/screenshots/artwork-result.png)
 
 ## For Developers
 
